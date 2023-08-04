@@ -111,6 +111,15 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.commands.registerCommand(
+      "cloudflare-devtools.expandAllMetadata",
+      (e: KVQueryElement) => {
+        kvTreeView.reveal(e, { expand: 3 })
+      },
+    ),
+  )
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
       "cloudflare-devtools.deleteEntry",
       async (entry: KVEntryElement, other?: KVTreeElement[]) => {
         vscode.window.withProgress(

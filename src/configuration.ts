@@ -6,6 +6,5 @@ export const getQueryConfig = () =>
       namespaceID: string
       prefix?: string
       title?: string
-      autoExpandMetadata?: boolean
     }[]
   >("queries") ?? []

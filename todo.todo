@@ -15,4 +15,4 @@ Debt:
 ✔ "name" => "key" @started(23-08-04 11:55) @done(23-08-04 12:03) @lasted(8m17s)
 ✔ Reduce cache busting in rename @done(23-08-04 16:17)
 ✔ Delete from all lists without manually passing prefix @done(23-08-04 16:17)
-☐ Investigate TreeView.expand() api
+✔ Investigate TreeView.expand() api @done(23-08-04 16:25)

@@ -46,6 +46,12 @@
         "enablement": "viewItem == query"
       },
       {
+        "command": "cloudflare-devtools.expandAllMetadata",
+        "title": "Expand All Metadata",
+        "icon": "$(expand-all)",
+        "enablement": "viewItem == query"
+      },
+      {
         "command": "cloudflare-devtools.editKey",
         "title": "Edit Key",
         "icon": "$(edit)",
@@ -80,13 +86,18 @@
       "view/item/context": [
         {
           "when": "viewItem == query",
-          "command": "cloudflare-devtools.refreshQuery",
-          "group": "inline"
+          "command": "cloudflare-devtools.createEntry",
+          "group": "inline@1"
         },
         {
           "when": "viewItem == query",
-          "command": "cloudflare-devtools.createEntry",
-          "group": "inline"
+          "command": "cloudflare-devtools.expandAllMetadata",
+          "group": "inline@2"
+        },
+        {
+          "when": "viewItem == query",
+          "command": "cloudflare-devtools.refreshQuery",
+          "group": "inline@3"
         },
         {
           "when": "viewItem == meta",
@@ -154,7 +165,7 @@
       "properties": {
         "cloudflare-devtools.kv.queries": {
           "type": "array",
-          "markdownDescription": "List of KV queries to show in view. Each query consists of\n- `namespaceID` the ID of the KV namespace to search in. Might be in your wrangler.toml, but maybe not if you use the github integration (required) \n- `prefix` to query for (optional)\n- `title` to display (optional)\n- `autoExpandMetadata` whether the metadata of this queries results should be shown expanded (optional)",
+          "markdownDescription": "List of KV queries to show in view. Each query consists of\n- `namespaceID` the ID of the KV namespace to search in. Might be in your wrangler.toml, but maybe not if you use the github integration (required) \n- `prefix` to query for (optional)\n- `title` to display (optional)",
           "items": {
             "type": "object",
             "default": {
@@ -175,9 +186,6 @@
               },
               "title": {
                 "type": "string"
-              },
-              "autoExpandMetadata": {
-                "type": "boolean"
               }
             }
           }

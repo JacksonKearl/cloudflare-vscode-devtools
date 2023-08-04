@@ -3,6 +3,29 @@ import { ListResponseDatum, list } from "./wrangler"
 import { uriForKV } from "./uris"
 import { getQueryConfig } from "./configuration"
 
+export type KVQueryElement = {
+  type: "query"
+  namespaceID: string
+  prefix: string
+  title: string
+  parent: undefined
+}
+
+export type KVEntryElement = {
+  type: "entry"
+  namespaceID: string
+  parent: KVQueryElement
+} & ListResponseDatum
+
+export type KVMetaElement = {
+  type: "meta"
+  key: string
+  value?: any
+  singleChild: boolean
+  parent: KVTreeElement
+}
+export type KVTreeElement = KVQueryElement | KVEntryElement | KVMetaElement
+
 const trySimpleStringRep = (value: any): string | undefined => {
   if (
     typeof value === "string" ||
@@ -38,34 +61,14 @@ const getMetadataChildren = (
   }
 }
 
-export type KVQueryElement = {
-  type: "query"
-  namespaceID: string
-  prefix: string
-  title: string
-  autoExpand: boolean
-}
-
-export type KVEntryElement = {
-  type: "entry"
-  namespaceID: string
-  parent: KVQueryElement
-} & ListResponseDatum
-
-export type KVMetaElement = {
-  type: "meta"
-  key: string
-  value?: any
-  singleChild: boolean
-  parent: KVTreeElement
-}
-export type KVTreeElement = KVQueryElement | KVEntryElement | KVMetaElement
-
 export const kvTreeDataProvider = (
   changeEmitter: vscode.EventEmitter<void | KVTreeElement | KVTreeElement[]>,
 ): vscode.TreeDataProvider<KVTreeElement> => {
   return {
     onDidChangeTreeData: changeEmitter.event,
+    getParent(element) {
+      return element.parent
+    },
     async getChildren(element) {
       if (element === undefined) {
         return getQueryConfig().map((s, i) => ({
@@ -73,7 +76,7 @@ export const kvTreeDataProvider = (
           namespaceID: s.namespaceID,
           prefix: s.prefix ?? "",
           title: s.title ?? s.prefix ?? `Query ${i + 1}`,
-          autoExpand: Boolean(s.autoExpandMetadata),
+          parent: undefined,
         }))
       }
 
@@ -124,8 +127,6 @@ export const kvTreeDataProvider = (
             element.key.slice(element.parent.prefix.length),
             element.metadata === undefined
               ? vscode.TreeItemCollapsibleState.None
-              : rootQuery.autoExpand
-              ? vscode.TreeItemCollapsibleState.Expanded
               : vscode.TreeItemCollapsibleState.Collapsed,
           )
 
@@ -150,7 +151,7 @@ export const kvTreeDataProvider = (
           const item = new vscode.TreeItem(
             label,
             expandable
-              ? element.singleChild || rootQuery.autoExpand
+              ? element.singleChild
                 ? vscode.TreeItemCollapsibleState.Expanded
                 : vscode.TreeItemCollapsibleState.Collapsed
               : vscode.TreeItemCollapsibleState.None,
