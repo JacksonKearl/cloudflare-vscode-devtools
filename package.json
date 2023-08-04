@@ -1,5 +1,5 @@
 {
-  "name": "cloudflare-devtools",
+  "name": "cloudflare-vscode-devtools",
   "displayName": "Cloudflare KV (unofficial)",
   "description": "Interface with various Cloudflare products (KV, etc.)",
   "version": "0.0.1",
