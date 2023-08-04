@@ -40,6 +40,12 @@
         "enablement": "viewItem == query"
       },
       {
+        "command": "cloudflare-devtools.editKey",
+        "title": "Edit Key",
+        "icon": "$(edit)",
+        "enablement": "viewItem == entry"
+      },
+      {
         "command": "cloudflare-devtools.refreshEntry",
         "title": "Refresh",
         "icon": "$(refresh)",
@@ -88,13 +94,18 @@
         },
         {
           "when": "viewItem == entry",
+          "command": "cloudflare-devtools.editKey",
+          "group": "edit@1"
+        },
+        {
+          "when": "viewItem == entry",
           "command": "cloudflare-devtools.editMetadata",
-          "group": "inline@1"
+          "group": "edit@2"
         },
         {
           "when": "viewItem == entry",
           "command": "cloudflare-devtools.editExpiration",
-          "group": "inline@2"
+          "group": "edit@3"
         },
         {
           "when": "viewItem == entry",

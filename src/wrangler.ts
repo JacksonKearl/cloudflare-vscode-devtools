@@ -169,12 +169,24 @@ export const put = async (opts: {
   const metadata = metadataCache.get(cacheKey)
   const expiration = expirationCache.get(cacheKey)
 
+  return putFull({ ...opts, metadata, expiration })
+}
+
+export const putFull = async (opts: {
+  namespaceID: string
+  key: string
+  value: Uint8Array
+  metadata?: string
+  expiration?: number
+}) => {
+  const cacheKey = opts.namespaceID + "/" + opts.key
+
   await wrangle(opts.namespaceID, [
     "put",
     opts.key,
     opts.value.toString(),
-    ...(metadata ? ["--metadata", metadata] : []),
-    ...(expiration ? ["--expiration", String(expiration)] : []),
+    ...(opts.metadata ? ["--metadata", opts.metadata] : []),
+    ...(opts.expiration ? ["--expiration", String(opts.expiration)] : []),
   ])
   cacheContents(cacheKey, Promise.resolve(opts.value))
 }

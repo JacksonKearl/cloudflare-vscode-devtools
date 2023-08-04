@@ -12,6 +12,8 @@ import {
   clearEntryCache,
   clearListCache,
   del,
+  get,
+  putFull,
   setExpiration,
   setMetadata,
 } from "./wrangler"
@@ -38,6 +40,48 @@ export function activate(context: vscode.ExtensionContext) {
         clearEntryCache()
         clearListCache({ namespaceID: query.namespaceID, prefix: query.prefix })
         treeChangeEmitter.fire(query)
+      },
+    ),
+  )
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "cloudflare-devtools.editKey",
+      async (entry: KVEntryElement) => {
+        const newKey = await vscode.window.showInputBox({
+          value: entry.name,
+          title: "Enter new Key",
+        })
+        if (!newKey) {
+          return
+        }
+        vscode.window.withProgress(
+          { location: { viewId: "cloudflare-devtools.kv" } },
+          async () => {
+            const value = await get({
+              namespaceID: entry.namespaceID,
+              key: entry.name,
+            })
+
+            await putFull({
+              namespaceID: entry.namespaceID,
+              key: newKey,
+              value,
+              expiration: entry.expiration,
+              metadata: JSON.stringify(entry.metadata),
+            })
+
+            await del({
+              namespaceID: entry.namespaceID,
+              key: entry.name,
+              prefix: entry.parent.prefix,
+            })
+
+            // TODO: this cache busting is overaggressive.
+            clearListCache()
+            treeChangeEmitter.fire()
+          },
+        )
       },
     ),
   )
