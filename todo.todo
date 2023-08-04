@@ -4,4 +4,8 @@
 ✔ Delete Item(s) @started(23-08-03 13:51) @done(23-08-03 14:51) @lasted(1h10s)
 ✔ Edit Metadata @started(23-08-03 15:39) @done(23-08-03 16:23) @lasted(44m29s)
 ✔ Edit Expirtion @started(23-08-03 16:26) @done(23-08-03 16:50) @lasted(24m54s)
-☐ Expand All (Query)
+✔ Expand All (Query) @done(23-08-04 01:59)
+✔ Copy Metadata @started(23-08-04 10:28) @done(23-08-04 10:47) @lasted(19m22s)
+✔ Copy Key @started(23-08-04 10:47) @done(23-08-04 10:54) @lasted(7m23s)
+☐ Rename Entry
+☐ Debt: "name" => "key"

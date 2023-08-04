@@ -15,13 +15,16 @@ const trySimpleStringRep = (value: any): string | undefined => {
   return undefined
 }
 
-const getMetadataChildren = (metadata: any): KVMetaElement[] => {
+const getMetadataChildren = (
+  metadata: any,
+  parent: KVTreeElement,
+): KVMetaElement[] => {
   if (metadata === undefined) {
     return []
   }
   const str = trySimpleStringRep(metadata)
   if (str) {
-    return [{ type: "meta", key: str, singleChild: true }]
+    return [{ type: "meta", key: str, singleChild: true, parent }]
   } else {
     const entries = Object.entries(metadata)
     return entries.map(([key, value]) => ({
@@ -29,6 +32,7 @@ const getMetadataChildren = (metadata: any): KVMetaElement[] => {
       key,
       value,
       singleChild: entries.length === 1,
+      parent,
     }))
   }
 }
@@ -38,6 +42,7 @@ export type KVQueryElement = {
   namespaceID: string
   prefix: string
   title: string
+  autoExpand: boolean
 }
 
 export type KVEntryElement = {
@@ -46,11 +51,12 @@ export type KVEntryElement = {
   parent: KVQueryElement
 } & ListResponseDatum
 
-type KVMetaElement = {
+export type KVMetaElement = {
   type: "meta"
   key: string
   value?: any
   singleChild: boolean
+  parent: KVTreeElement
 }
 export type KVTreeElement = KVQueryElement | KVEntryElement | KVMetaElement
 
@@ -62,17 +68,21 @@ export const kvTreeDataProvider = (
     async getChildren(element) {
       if (element === undefined) {
         const settings =
-          vscode.workspace
-            .getConfiguration("cloudflare-devtools.kv")
-            .get<{ namespaceID: string; prefix?: string; title?: string }[]>(
-              "queries",
-            ) ?? []
+          vscode.workspace.getConfiguration("cloudflare-devtools.kv").get<
+            {
+              namespaceID: string
+              prefix?: string
+              title?: string
+              autoExpandMetadata?: boolean
+            }[]
+          >("queries") ?? []
 
         return settings.map((s, i) => ({
           type: "query",
           namespaceID: s.namespaceID,
           prefix: s.prefix ?? "",
           title: s.title ?? s.prefix ?? `Query ${i + 1}`,
+          autoExpand: Boolean(s.autoExpandMetadata),
         }))
       }
 
@@ -93,16 +103,22 @@ export const kvTreeDataProvider = (
         }
         case "entry": {
           if (element.metadata) {
-            return getMetadataChildren(element.metadata)
+            return getMetadataChildren(element.metadata, element)
           }
           return []
         }
         case "meta": {
-          return getMetadataChildren(element.value)
+          return getMetadataChildren(element.value, element)
         }
       }
     },
     getTreeItem(element) {
+      let root = element.type === "query" ? element : element.parent
+      while (root.type !== "query") {
+        root = root.parent
+      }
+      const rootQuery = root as KVQueryElement
+
       switch (element.type) {
         case "query": {
           const item = new vscode.TreeItem(
@@ -117,10 +133,12 @@ export const kvTreeDataProvider = (
             element.name.slice(element.parent.prefix.length),
             element.metadata === undefined
               ? vscode.TreeItemCollapsibleState.None
+              : rootQuery.autoExpand
+              ? vscode.TreeItemCollapsibleState.Expanded
               : vscode.TreeItemCollapsibleState.Collapsed,
           )
-          item.description = element.ttl
-            ? `Expires in ${Math.round(element.ttl / 60 / 60)} hrs`
+          item.description = element.expiration
+            ? new Date(element.expiration * 1000).toLocaleString()
             : false
           item.command = {
             command: "vscode.open",
@@ -135,16 +153,17 @@ export const kvTreeDataProvider = (
         case "meta": {
           const expandable =
             typeof element.value === "object" && element.value !== null
-
+          const simple = trySimpleStringRep(element.value)
+          const label = simple ? element.key + ": " + simple : element.key
           const item = new vscode.TreeItem(
-            element.key,
+            label,
             expandable
-              ? element.singleChild
+              ? element.singleChild || rootQuery.autoExpand
                 ? vscode.TreeItemCollapsibleState.Expanded
                 : vscode.TreeItemCollapsibleState.Collapsed
               : vscode.TreeItemCollapsibleState.None,
           )
-          item.description = trySimpleStringRep(element.value)
+          item.contextValue = "meta"
           return item
         }
       }

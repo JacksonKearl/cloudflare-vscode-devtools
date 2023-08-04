@@ -16,6 +16,18 @@
   "contributes": {
     "commands": [
       {
+        "command": "cloudflare-devtools.copyMetadata",
+        "title": "Copy Metadata",
+        "icon": "$(copy)",
+        "enablement": "viewItem == entry || viewItem == meta"
+      },
+      {
+        "command": "cloudflare-devtools.copyKey",
+        "title": "Copy Key",
+        "icon": "$(copy)",
+        "enablement": "viewItem == entry"
+      },
+      {
         "command": "cloudflare-devtools.deleteEntry",
         "title": "Delete Item",
         "icon": "$(trash)",
@@ -23,13 +35,13 @@
       },
       {
         "command": "cloudflare-devtools.refreshQuery",
-        "title": "Refresh KV Query",
+        "title": "Refresh",
         "icon": "$(refresh)",
         "enablement": "viewItem == query"
       },
       {
         "command": "cloudflare-devtools.refreshEntry",
-        "title": "Refresh KV Entry",
+        "title": "Refresh",
         "icon": "$(refresh)",
         "enablement": "resourceScheme == cloudflare-devtools-kv"
       },
@@ -60,6 +72,21 @@
           "group": "inline"
         },
         {
+          "when": "viewItem == meta",
+          "command": "cloudflare-devtools.copyMetadata",
+          "group": "inline"
+        },
+        {
+          "when": "viewItem == entry",
+          "command": "cloudflare-devtools.copyKey",
+          "group": "copy"
+        },
+        {
+          "when": "viewItem == entry",
+          "command": "cloudflare-devtools.copyMetadata",
+          "group": "copy"
+        },
+        {
           "when": "viewItem == entry",
           "command": "cloudflare-devtools.editMetadata",
           "group": "inline@1"
@@ -76,6 +103,12 @@
         }
       ]
     },
+    "viewsWelcome": [
+      {
+        "view": "cloudflare-devtools.kv",
+        "contents": "No queries configured... yet!\n[Add new query](command:workbench.action.openSettings?%5B%22cloudflare-devtools.kv.queries%22%5D)"
+      }
+    ],
     "viewsContainers": {
       "activitybar": [
         {
@@ -99,7 +132,15 @@
       "properties": {
         "cloudflare-devtools.kv.queries": {
           "type": "array",
+          "markdownDescription": "List of KV queries to show in view. Each query consists of\n- `namespaceID` the ID of the KV namespace to search in. Might be in your wrangler.toml, but maybe not if you use the github integration (required) \n- `prefix` to query for (optional)\n- `title` to display (optional)\n- `autoExpandMetadata` whether the metadata of this queries results should be shown expanded (optional)",
           "items": {
+            "type": "object",
+            "default": {
+              "namespaceID": "",
+              "prefix": "",
+              "name": "My Query",
+              "autoExpandMetadata": "true"
+            },
             "required": [
               "namespaceID"
             ],
@@ -112,6 +153,9 @@
               },
               "title": {
                 "type": "string"
+              },
+              "autoExpandMetadata": {
+                "type": "boolean"
               }
             }
           }

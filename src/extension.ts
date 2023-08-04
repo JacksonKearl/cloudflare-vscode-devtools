@@ -5,6 +5,7 @@ import {
   KVQueryElement,
   kvTreeDataProvider,
   KVEntryElement,
+  KVMetaElement,
 } from "./kvTreeDataProvider"
 import { kvForUri, kvScheme, uriForKV } from "./uris"
 import {
@@ -170,6 +171,68 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.workspace.registerFileSystemProvider(
       kvScheme,
       kvFileSystemProvider(fsChangeEmitter),
+    ),
+  )
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "cloudflare-devtools.copyKey",
+      (item: KVEntryElement, rest: KVTreeElement[]) => {
+        const toCopy: KVEntryElement[] = rest
+          ? rest.filter((r): r is KVEntryElement => r.type === "entry")
+          : [item]
+        const keys = toCopy.map((e) => e.name)
+        if (keys.length === 1) {
+          return vscode.env.clipboard.writeText(keys[0])
+        } else {
+          return vscode.env.clipboard.writeText(JSON.stringify(keys))
+        }
+      },
+    ),
+  )
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "cloudflare-devtools.copyMetadata",
+      (
+        item: KVEntryElement | KVMetaElement,
+        rest: (KVEntryElement | KVMetaElement)[],
+      ) => {
+        const getMetaData = (element: KVEntryElement | KVMetaElement) => {
+          if (element.type === "entry") {
+            return element.metadata
+          } else {
+            return element.value
+          }
+        }
+        if (rest) {
+          const entriesCopied = new Set<KVTreeElement>()
+          vscode.env.clipboard.writeText(
+            JSON.stringify(
+              rest
+                .map((r) => {
+                  if (r.type === "entry") {
+                    entriesCopied.add(r)
+                  } else {
+                    let parent = r.parent
+                    while (r.parent.type !== "entry") {
+                      parent = r.parent
+                    }
+                    if (entriesCopied.has(parent)) {
+                      return undefined
+                    }
+                  }
+                  return getMetaData(r)
+                })
+                .filter((x) => x !== undefined),
+            ),
+          )
+        } else {
+          vscode.env.clipboard.writeText(
+            JSON.stringify(getMetaData(item)) ?? "[Empty Metadata]",
+          )
+        }
+      },
     ),
   )
 
