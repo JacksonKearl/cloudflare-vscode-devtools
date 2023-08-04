@@ -28,6 +28,12 @@
         "enablement": "viewItem == entry"
       },
       {
+        "command": "cloudflare-devtools.createEntry",
+        "title": "Create Entry",
+        "icon": "$(new-file)",
+        "enablement": "viewItem == query"
+      },
+      {
         "command": "cloudflare-devtools.deleteEntry",
         "title": "Delete Item",
         "icon": "$(trash)",
@@ -78,6 +84,11 @@
           "group": "inline"
         },
         {
+          "when": "viewItem == query",
+          "command": "cloudflare-devtools.createEntry",
+          "group": "inline"
+        },
+        {
           "when": "viewItem == meta",
           "command": "cloudflare-devtools.copyMetadata",
           "group": "inline"
@@ -100,12 +111,12 @@
         {
           "when": "viewItem == entry",
           "command": "cloudflare-devtools.editMetadata",
-          "group": "edit@2"
+          "group": "inline@1"
         },
         {
           "when": "viewItem == entry",
           "command": "cloudflare-devtools.editExpiration",
-          "group": "edit@3"
+          "group": "inline@2"
         },
         {
           "when": "viewItem == entry",

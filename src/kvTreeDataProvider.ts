@@ -1,6 +1,7 @@
 import * as vscode from "vscode"
 import { ListResponseDatum, list } from "./wrangler"
 import { uriForKV } from "./uris"
+import { getQueryConfig } from "./configuration"
 
 const trySimpleStringRep = (value: any): string | undefined => {
   if (
@@ -67,17 +68,7 @@ export const kvTreeDataProvider = (
     onDidChangeTreeData: changeEmitter.event,
     async getChildren(element) {
       if (element === undefined) {
-        const settings =
-          vscode.workspace.getConfiguration("cloudflare-devtools.kv").get<
-            {
-              namespaceID: string
-              prefix?: string
-              title?: string
-              autoExpandMetadata?: boolean
-            }[]
-          >("queries") ?? []
-
-        return settings.map((s, i) => ({
+        return getQueryConfig().map((s, i) => ({
           type: "query",
           namespaceID: s.namespaceID,
           prefix: s.prefix ?? "",
@@ -89,7 +80,7 @@ export const kvTreeDataProvider = (
       switch (element.type) {
         case "query": {
           try {
-            const data = await list(element)
+            const data = await list(element, () => changeEmitter.fire(element))
             return data.map((datum) => ({
               type: "entry",
               parent: element,
@@ -137,6 +128,7 @@ export const kvTreeDataProvider = (
               ? vscode.TreeItemCollapsibleState.Expanded
               : vscode.TreeItemCollapsibleState.Collapsed,
           )
+
           item.description = element.expiration
             ? new Date(element.expiration * 1000).toLocaleString()
             : false

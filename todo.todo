@@ -9,9 +9,10 @@ Features:
 ✔ Copy Metadata @started(23-08-04 10:28) @done(23-08-04 10:47) @lasted(19m22s)
 ✔ Copy Key @started(23-08-04 10:47) @done(23-08-04 10:54) @lasted(7m23s)
 ✔ Rename Entry @started(23-08-04 11:15) @done(23-08-04 11:45) @lasted(30m)
-☐ Add Entry
+✔ Add Entry @started(23-08-04 14:06) @done(23-08-04 16:17) @lasted(2h11m25s)
 
 Debt:
 ✔ "name" => "key" @started(23-08-04 11:55) @done(23-08-04 12:03) @lasted(8m17s)
-☐ Reduce cache busting in rename
-☐ Delete from all lists without manually passing prefix
+✔ Reduce cache busting in rename @done(23-08-04 16:17)
+✔ Delete from all lists without manually passing prefix @done(23-08-04 16:17)
+☐ Investigate TreeView.expand() api

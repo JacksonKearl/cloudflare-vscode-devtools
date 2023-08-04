@@ -1,16 +1,16 @@
 import * as vscode from "vscode"
 import { spawn } from "child_process"
+import { emptyUri } from "./uris"
+import { getQueryConfig } from "./configuration"
 
 export type RawListResponseDatum = {
   name: string
-  ttl?: number
   expiration?: number
   metadata?: any
 }
 
 export type ListResponseDatum = {
   key: string
-  ttl?: number
   expiration?: number
   metadata?: any
 }
@@ -52,18 +52,23 @@ const wrangle = (namespaceID: string, args: string[]): Promise<Buffer> =>
 
 const metadataCache = new Map<string, string>()
 const expirationCache = new Map<string, number | undefined>()
-const listCache = new Map<string, ListResponseDatum[]>()
+const listCache = new Map<
+  string,
+  { onChange?: () => void; data: ListResponseDatum[] }
+>()
 
-export const list = async (opts: {
-  namespaceID: string
-  prefix: string
-}): Promise<ListResponseDatum[]> => {
+export const list = async (
+  opts: {
+    namespaceID: string
+    prefix: string
+  },
+  onListModified?: () => void,
+): Promise<ListResponseDatum[]> => {
   const listCacheKey = opts.namespaceID + "/" + opts.prefix
   if (listCache.has(listCacheKey)) {
-    const list = listCache.get(listCacheKey)!.map((datum) => {
+    const list = listCache.get(listCacheKey)!.data.map((datum) => {
       const datumCacheKey = opts.namespaceID + "/" + datum.key
       const expiration = expirationCache.get(datumCacheKey)
-      const ttl = expiration ? expiration - Date.now() / 1000 : undefined
       datum.expiration = expiration
       const metadata = metadataCache.get(datumCacheKey)
       if (metadata) {
@@ -75,10 +80,11 @@ export const list = async (opts: {
       } else {
         datum.metadata = undefined
       }
-      datum.ttl = ttl
+
       return datum
     })
     console.log("got list from cache", list)
+    listCache.set(listCacheKey, { data: list, onChange: onListModified })
     return list
   }
 
@@ -95,16 +101,14 @@ export const list = async (opts: {
         opts.namespaceID + "/" + datum.name,
         JSON.stringify(datum.metadata),
       )
-      datum.ttl = data.push({
+      expirationCache.set(opts.namespaceID + "/" + datum.name, datum.expiration)
+      data.push({
         key: datum.name,
         expiration: datum.expiration,
         metadata: datum.metadata,
-        ttl: datum.expiration
-          ? datum.expiration - Date.now() / 1000
-          : undefined,
       })
     }
-    listCache.set(listCacheKey, data)
+    listCache.set(listCacheKey, { data, onChange: onListModified })
     return data
   } catch (e) {
     throw Error(
@@ -191,16 +195,47 @@ export const putFull = async (opts: {
   metadata?: string
   expiration?: number
 }) => {
-  const cacheKey = opts.namespaceID + "/" + opts.key
-
   await wrangle(opts.namespaceID, [
     "put",
     opts.key,
-    opts.value.toString(),
+    ...(opts.value.length
+      ? [opts.value.toString()]
+      : ["--path", (await emptyUri).fsPath]),
     ...(opts.metadata ? ["--metadata", opts.metadata] : []),
     ...(opts.expiration ? ["--expiration", String(opts.expiration)] : []),
   ])
+  const cacheKey = opts.namespaceID + "/" + opts.key
   cacheContents(cacheKey, Promise.resolve(opts.value))
+  metadataCache.set(cacheKey, opts.metadata ?? "")
+  expirationCache.set(cacheKey, opts.expiration)
+
+  const affectedQueries = getQueryConfig().filter(
+    ({ namespaceID, prefix }) =>
+      namespaceID === opts.namespaceID && opts.key.startsWith(prefix || ""),
+  )
+
+  affectedQueries.forEach((q) => {
+    const cacheKey = q.namespaceID + "/" + (q.prefix ?? "")
+    const cached = listCache.get(cacheKey)
+    if (cached) {
+      const insertIndex = cached.data.findIndex((v) => v.key >= opts.key)
+
+      const datum: ListResponseDatum = {
+        key: opts.key,
+        expiration: opts.expiration,
+        metadata: opts.metadata,
+      }
+
+      if (insertIndex === -1) {
+        cached.data.push(datum)
+      } else if (cached.data[insertIndex].key === opts.key) {
+        cached.data[insertIndex] = datum
+      } else {
+        cached.data.splice(insertIndex, 0, datum)
+      }
+      cached.onChange?.()
+    }
+  })
 }
 
 export const del = async (opts: {
@@ -214,14 +249,15 @@ export const del = async (opts: {
       "Cannot find parent list for delete element: " + JSON.stringify(opts),
     )
   }
-  const index = cachedList.findIndex((v) => v.key === opts.key)
+  const index = cachedList.data.findIndex((v) => v.key === opts.key)
   if (index === -1) {
     throw Error(
       "Cannot find delete element in parent list: " +
         JSON.stringify({ deleteElement: opts, parentList: cachedList }),
     )
   }
-  cachedList.splice(index, 1)
+  cachedList.data.splice(index, 1)
+  cachedList.onChange?.()
   clearEntryCache({ namespaceID: opts.namespaceID, key: opts.key })
 
   await wrangle(opts.namespaceID, ["delete", opts.key])

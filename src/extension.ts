@@ -7,7 +7,7 @@ import {
   KVEntryElement,
   KVMetaElement,
 } from "./kvTreeDataProvider"
-import { kvForUri, kvScheme, uriForKV } from "./uris"
+import { kvForUri, kvScheme, makeEmptyFile, uriForKV } from "./uris"
 import {
   clearEntryCache,
   clearListCache,
@@ -19,6 +19,8 @@ import {
 } from "./wrangler"
 
 export function activate(context: vscode.ExtensionContext) {
+  makeEmptyFile(context.globalStorageUri)
+
   const treeChangeEmitter = new vscode.EventEmitter<
     void | KVTreeElement | KVTreeElement[]
   >()
@@ -40,6 +42,35 @@ export function activate(context: vscode.ExtensionContext) {
         clearEntryCache()
         clearListCache({ namespaceID: query.namespaceID, prefix: query.prefix })
         treeChangeEmitter.fire(query)
+      },
+    ),
+  )
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "cloudflare-devtools.createEntry",
+      async (query: KVQueryElement) => {
+        const key = await vscode.window.showInputBox({
+          title: "Enter Key",
+          value: query.prefix,
+        })
+
+        if (!key) {
+          return
+        }
+
+        vscode.window.withProgress(
+          { location: { viewId: "cloudflare-devtools.kv" } },
+          async () => {
+            const entry = {
+              namespaceID: query.namespaceID,
+              key,
+              value: new Uint8Array(),
+            }
+            await putFull(entry)
+            await vscode.commands.executeCommand("vscode.open", uriForKV(entry))
+          },
+        )
       },
     ),
   )
@@ -72,10 +103,6 @@ export function activate(context: vscode.ExtensionContext) {
               ...entry,
               prefix: entry.parent.prefix,
             })
-
-            // TODO: this cache busting is overaggressive.
-            clearListCache()
-            treeChangeEmitter.fire()
           },
         )
       },
@@ -92,14 +119,10 @@ export function activate(context: vscode.ExtensionContext) {
             Promise.all(
               (other ?? [entry]).map(async (entry) => {
                 if (entry.type === "entry") {
-                  const task = del({
+                  await del({
                     ...entry,
                     prefix: entry.parent.prefix,
                   })
-                  // instantly trigger the update so the layout shift happens ASAP, less likely to mis-click later
-                  treeChangeEmitter.fire(entry.parent)
-                  // await here so progress is shown until delete has finished
-                  await task
                   fsChangeEmitter.fire([
                     {
                       type: vscode.FileChangeType.Deleted,
