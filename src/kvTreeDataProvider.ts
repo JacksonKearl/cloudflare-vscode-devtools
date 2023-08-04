@@ -130,7 +130,7 @@ export const kvTreeDataProvider = (
         }
         case "entry": {
           const item = new vscode.TreeItem(
-            element.name.slice(element.parent.prefix.length),
+            element.key.slice(element.parent.prefix.length),
             element.metadata === undefined
               ? vscode.TreeItemCollapsibleState.None
               : rootQuery.autoExpand
@@ -144,7 +144,7 @@ export const kvTreeDataProvider = (
             command: "vscode.open",
             title: "Open",
             arguments: [
-              uriForKV({ key: element.name, namespaceID: element.namespaceID }),
+              uriForKV({ key: element.key, namespaceID: element.namespaceID }),
             ],
           }
           item.contextValue = "entry"

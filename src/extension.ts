@@ -49,7 +49,7 @@ export function activate(context: vscode.ExtensionContext) {
       "cloudflare-devtools.editKey",
       async (entry: KVEntryElement) => {
         const newKey = await vscode.window.showInputBox({
-          value: entry.name,
+          value: entry.key,
           title: "Enter new Key",
         })
         if (!newKey) {
@@ -58,10 +58,7 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.window.withProgress(
           { location: { viewId: "cloudflare-devtools.kv" } },
           async () => {
-            const value = await get({
-              namespaceID: entry.namespaceID,
-              key: entry.name,
-            })
+            const value = await get(entry)
 
             await putFull({
               namespaceID: entry.namespaceID,
@@ -72,8 +69,7 @@ export function activate(context: vscode.ExtensionContext) {
             })
 
             await del({
-              namespaceID: entry.namespaceID,
-              key: entry.name,
+              ...entry,
               prefix: entry.parent.prefix,
             })
 
@@ -97,8 +93,7 @@ export function activate(context: vscode.ExtensionContext) {
               (other ?? [entry]).map(async (entry) => {
                 if (entry.type === "entry") {
                   const task = del({
-                    key: entry.name,
-                    namespaceID: entry.namespaceID,
+                    ...entry,
                     prefix: entry.parent.prefix,
                   })
                   // instantly trigger the update so the layout shift happens ASAP, less likely to mis-click later
@@ -108,10 +103,7 @@ export function activate(context: vscode.ExtensionContext) {
                   fsChangeEmitter.fire([
                     {
                       type: vscode.FileChangeType.Deleted,
-                      uri: uriForKV({
-                        namespaceID: entry.namespaceID,
-                        key: entry.name,
-                      }),
+                      uri: uriForKV(entry),
                     },
                   ])
                 }
@@ -136,7 +128,6 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(
       "cloudflare-devtools.editMetadata",
       async (element: KVEntryElement) => {
-        const entry = { namespaceID: element.namespaceID, key: element.name }
         const update = await vscode.window.showInputBox({
           value: JSON.stringify(element.metadata),
           validateInput(value) {
@@ -156,7 +147,7 @@ export function activate(context: vscode.ExtensionContext) {
 
         await vscode.window.withProgress(
           { location: { viewId: "cloudflare-devtools.kv" } },
-          () => setMetadata({ ...entry, meta: update }),
+          () => setMetadata({ ...element, meta: update }),
         )
         treeChangeEmitter.fire(element.parent)
       },
@@ -172,7 +163,6 @@ export function activate(context: vscode.ExtensionContext) {
           : ""
 
         const ex = new Date().toISOString()
-        const entry = { namespaceID: element.namespaceID, key: element.name }
         const update = await vscode.window.showInputBox({
           value: prior,
           title: "Set Expiration Date",
@@ -204,7 +194,7 @@ export function activate(context: vscode.ExtensionContext) {
 
         await vscode.window.withProgress(
           { location: { viewId: "cloudflare-devtools.kv" } },
-          () => setExpiration({ ...entry, expiration: newExpiration }),
+          () => setExpiration({ ...element, expiration: newExpiration }),
         )
         treeChangeEmitter.fire(element.parent)
       },
@@ -225,7 +215,7 @@ export function activate(context: vscode.ExtensionContext) {
         const toCopy: KVEntryElement[] = rest
           ? rest.filter((r): r is KVEntryElement => r.type === "entry")
           : [item]
-        const keys = toCopy.map((e) => e.name)
+        const keys = toCopy.map((e) => e.key)
         if (keys.length === 1) {
           return vscode.env.clipboard.writeText(keys[0])
         } else {

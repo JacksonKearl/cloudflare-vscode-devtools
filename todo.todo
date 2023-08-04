@@ -1,3 +1,4 @@
+Features:
 ✔ Edit Value of Existing Key @done(23-08-03 11:28)
 ✔ Refresh Query @done(23-08-03 12:57)
 ✔ Refresh Single Entry @done(23-08-03 13:51)
@@ -10,5 +11,7 @@
 ✔ Rename Entry @started(23-08-04 11:15) @done(23-08-04 11:45) @lasted(30m)
 ☐ Add Entry
 
-☐ Debt: "name" => "key"
-☐ Debt: Reduce cache busting in rename
+Debt:
+✔ "name" => "key" @started(23-08-04 11:55) @done(23-08-04 12:03) @lasted(8m17s)
+☐ Reduce cache busting in rename
+☐ Delete from all lists without manually passing prefix

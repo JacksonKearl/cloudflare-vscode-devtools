@@ -1,8 +1,15 @@
 import * as vscode from "vscode"
 import { spawn } from "child_process"
 
-export type ListResponseDatum = {
+export type RawListResponseDatum = {
   name: string
+  ttl?: number
+  expiration?: number
+  metadata?: any
+}
+
+export type ListResponseDatum = {
+  key: string
   ttl?: number
   expiration?: number
   metadata?: any
@@ -54,7 +61,7 @@ export const list = async (opts: {
   const listCacheKey = opts.namespaceID + "/" + opts.prefix
   if (listCache.has(listCacheKey)) {
     const list = listCache.get(listCacheKey)!.map((datum) => {
-      const datumCacheKey = opts.namespaceID + "/" + datum.name
+      const datumCacheKey = opts.namespaceID + "/" + datum.key
       const expiration = expirationCache.get(datumCacheKey)
       const ttl = expiration ? expiration - Date.now() / 1000 : undefined
       datum.expiration = expiration
@@ -81,16 +88,21 @@ export const list = async (opts: {
   ])
   const list = buffer.toString()
   try {
-    const data = JSON.parse(list) as ListResponseDatum[]
-    for (const datum of data) {
+    const rawData = JSON.parse(list) as RawListResponseDatum[]
+    const data: ListResponseDatum[] = []
+    for (const datum of rawData) {
       metadataCache.set(
         opts.namespaceID + "/" + datum.name,
         JSON.stringify(datum.metadata),
       )
-      expirationCache.set(opts.namespaceID + "/" + datum.name, datum.expiration)
-      datum.ttl = datum.expiration
-        ? datum.expiration - Date.now() / 1000
-        : undefined
+      datum.ttl = data.push({
+        key: datum.name,
+        expiration: datum.expiration,
+        metadata: datum.metadata,
+        ttl: datum.expiration
+          ? datum.expiration - Date.now() / 1000
+          : undefined,
+      })
     }
     listCache.set(listCacheKey, data)
     return data
@@ -202,7 +214,7 @@ export const del = async (opts: {
       "Cannot find parent list for delete element: " + JSON.stringify(opts),
     )
   }
-  const index = cachedList.findIndex((v) => v.name === opts.key)
+  const index = cachedList.findIndex((v) => v.key === opts.key)
   if (index === -1) {
     throw Error(
       "Cannot find delete element in parent list: " +
