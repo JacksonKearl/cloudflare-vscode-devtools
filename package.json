@@ -1,0 +1,144 @@
+{
+  "name": "cloudflare-devtools",
+  "displayName": "Cloudflare KV (unofficial)",
+  "description": "Interface with various Cloudflare products (KV, etc.)",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onFileSystem:cloudflare-devtools-kv"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "cloudflare-devtools.deleteEntry",
+        "title": "Delete Item",
+        "icon": "$(trash)",
+        "enablement": "viewItem == entry"
+      },
+      {
+        "command": "cloudflare-devtools.refreshQuery",
+        "title": "Refresh KV Query",
+        "icon": "$(refresh)",
+        "enablement": "viewItem == query"
+      },
+      {
+        "command": "cloudflare-devtools.refreshEntry",
+        "title": "Refresh KV Entry",
+        "icon": "$(refresh)",
+        "enablement": "resourceScheme == cloudflare-devtools-kv"
+      },
+      {
+        "command": "cloudflare-devtools.editMetadata",
+        "title": "Edit Metadata",
+        "icon": "$(code)",
+        "enablement": "viewItem == entry"
+      },
+      {
+        "command": "cloudflare-devtools.editExpiration",
+        "title": "Edit Expiration Time",
+        "icon": "$(calendar)",
+        "enablement": "viewItem == entry"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "cloudflare-devtools.refreshEntry",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "when": "viewItem == query",
+          "command": "cloudflare-devtools.refreshQuery",
+          "group": "inline"
+        },
+        {
+          "when": "viewItem == entry",
+          "command": "cloudflare-devtools.editMetadata",
+          "group": "inline@1"
+        },
+        {
+          "when": "viewItem == entry",
+          "command": "cloudflare-devtools.editExpiration",
+          "group": "inline@2"
+        },
+        {
+          "when": "viewItem == entry",
+          "command": "cloudflare-devtools.deleteEntry",
+          "group": "inline@3"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "title": "Cloudflare",
+          "id": "cloudflare",
+          "icon": "./cf.svg"
+        }
+      ]
+    },
+    "views": {
+      "cloudflare": [
+        {
+          "icon": "./cf.svg",
+          "contextualTitle": "Cloudflare",
+          "id": "cloudflare-devtools.kv",
+          "name": "KV"
+        }
+      ]
+    },
+    "configuration": {
+      "properties": {
+        "cloudflare-devtools.kv.queries": {
+          "type": "array",
+          "items": {
+            "required": [
+              "namespaceID"
+            ],
+            "properties": {
+              "namespaceID": {
+                "type": "string"
+              },
+              "prefix": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@total-typescript/ts-reset": "^0.4.2",
+    "@types/glob": "^8.0.1",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "16.x",
+    "@types/vscode": "^1.80.0",
+    "@typescript-eslint/eslint-plugin": "^5.49.0",
+    "@typescript-eslint/parser": "^5.49.0",
+    "@vscode/test-electron": "^2.2.2",
+    "eslint": "^8.33.0",
+    "glob": "^8.1.0",
+    "mocha": "^10.1.0",
+    "typescript": "^4.9.4"
+  }
+}

@@ -1,0 +1,109 @@
+```js
+const { spawn } = require("child_process")
+const { TextDecoder } = require("util")
+
+const ls = spawn("wrangler", [
+  "kv:key",
+  "list",
+  "--namespace-id=" + "3b65edbf813c4bec80a9c0290367a33d",
+  "--prefix=" + "quota",
+])
+
+const buffer = []
+
+ls.stdout.on("data", (data) => {
+  buffer.push(data)
+})
+
+ls.stderr.on("data", (data) => {
+  console.error("Wrangler List Error:", new TextDecoder("utf8").decode(data))
+})
+
+ls.on("close", (code) => {
+  const str = buffer.join("")
+  try {
+    const data = JSON.parse(str)
+    for (const datum of data) {
+      datum.ttl = datum.expiration
+        ? datum.expiration - Date.now() / 1000
+        : undefined
+    }
+    console.log({ data })
+  } catch {
+    console.log({ parseErr: str })
+  }
+})
+
+```
+
+```js
+const { spawn } = require("child_process")
+const { TextDecoder } = require("util")
+
+const ls = spawn("wrangler", [
+  "kv:key",
+  "get",
+  "--namespace-id=" + "3b65edbf813c4bec80a9c0290367a33d",
+  "rexipie/ztezio7wvn968ir25fh6cosp",
+])
+
+const buffer = []
+
+ls.stdout.on("data", (data) => {
+  console.log(typeof data, { data })
+  buffer.push(data)
+})
+
+ls.stderr.on("data", (data) => {
+  console.error("Wrangler List Error:", new TextDecoder("utf8").decode(data))
+})
+
+ls.on("close", (code) => {
+  const str = buffer.join("")
+  try {
+    const data = JSON.parse(str)
+    console.log({ data })
+  } catch {
+    console.log({ parseErr: str })
+  }
+})
+
+```
+
+```js
+const { spawn } = require("child_process")
+const { TextDecoder } = require("util")
+
+const ls = spawn("wrangler", [
+  "kv:key",
+  "put",
+  "--namespace-id",
+  "442bf8c58c6f447b9d9e10352d88ab99",
+  "simpleString",
+  "hello world",
+  "--metadata",
+  JSON.stringify("hello"),
+])
+
+const buffer = []
+
+ls.stdout.on("data", (data) => {
+  console.log(typeof data, { data })
+  buffer.push(data)
+})
+
+ls.stderr.on("data", (data) => {
+  console.error("Wrangler List Error:", new TextDecoder("utf8").decode(data))
+})
+
+ls.on("close", (code) => {
+  const str = buffer.join("")
+  try {
+    const data = JSON.parse(str)
+    console.log({ data })
+  } catch {
+    console.log({ parseErr: str })
+  }
+})
+
+```
