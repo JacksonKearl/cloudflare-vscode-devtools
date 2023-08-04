@@ -27,6 +27,14 @@ export function activate(context: vscode.ExtensionContext) {
   const fsChangeEmitter = new vscode.EventEmitter<vscode.FileChangeEvent[]>()
   context.subscriptions.push(treeChangeEmitter)
 
+  const kvTreeView = vscode.window.createTreeView("cloudflare-devtools.kv", {
+    treeDataProvider: kvTreeDataProvider(treeChangeEmitter),
+    canSelectMany: true,
+    showCollapseAll: true,
+  })
+
+  context.subscriptions.push(kvTreeView)
+
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration("cloudflare-devtools.kv")) {
@@ -301,14 +309,6 @@ export function activate(context: vscode.ExtensionContext) {
       },
     ),
   )
-
-  const kvTreeView = vscode.window.createTreeView("cloudflare-devtools.kv", {
-    treeDataProvider: kvTreeDataProvider(treeChangeEmitter),
-    canSelectMany: true,
-    showCollapseAll: true,
-  })
-
-  context.subscriptions.push(kvTreeView)
 }
 
 export function deactivate() {}
