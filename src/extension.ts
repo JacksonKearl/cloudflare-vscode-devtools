@@ -111,6 +111,13 @@ export function activate(context: vscode.ExtensionContext) {
               ...entry,
               prefix: entry.parent.prefix,
             })
+
+            fsChangeEmitter.fire([
+              {
+                type: vscode.FileChangeType.Deleted,
+                uri: uriForKV(entry),
+              },
+            ])
           },
         )
       },

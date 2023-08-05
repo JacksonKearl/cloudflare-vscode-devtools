@@ -178,7 +178,20 @@ export const put = async (opts: {
     )
     await list({ namespaceID: opts.namespaceID, prefix: opts.key })
     if (!(metadataCache.has(cacheKey) && expirationCache.has(cacheKey))) {
-      throw Error("could not find value in cache: " + cacheKey)
+      const whatToDo = await vscode.window.showErrorMessage(
+        `Could not determine expiration or metadata for key ${opts.key}, has the entry been deleted?`,
+        { modal: true },
+        "Cancel",
+        "Create New",
+      )
+      if (whatToDo === "Cancel") {
+        throw Error("Cancelled")
+      }
+
+      console.warn(
+        "could not find value in cache: " + cacheKey,
+        "using empty values",
+      )
     }
   }
 
@@ -261,6 +274,23 @@ export const del = async (opts: {
   clearEntryCache({ namespaceID: opts.namespaceID, key: opts.key })
 
   await wrangle(opts.namespaceID, ["delete", opts.key])
+
+  const affectedQueries = getQueryConfig().filter(
+    ({ namespaceID, prefix }) =>
+      namespaceID === opts.namespaceID && opts.key.startsWith(prefix || ""),
+  )
+
+  affectedQueries.forEach((q) => {
+    const cacheKey = q.namespaceID + "/" + (q.prefix ?? "")
+    const cached = listCache.get(cacheKey)
+    if (cached) {
+      const insertIndex = cached.data.findIndex((v) => v.key === opts.key)
+      if (insertIndex !== -1) {
+        cached.data.splice(insertIndex, 1)
+      }
+      cached.onChange?.()
+    }
+  })
 }
 
 export const clearEntryCache = (opts?: {
