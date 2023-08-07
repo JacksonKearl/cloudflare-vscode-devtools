@@ -51,3 +51,4 @@ Note: wrangler must be installed and logged into for this extension to work.
 ## Known Issues
 
 - Local mode does not properly render JSON as a parsed value. [View Bug](https://github.com/cloudflare/workers-sdk/issues/3715)
+- Local mode does not properly respect prefix filtering. [View Bug](https://github.com/cloudflare/workers-sdk/issues/3716)

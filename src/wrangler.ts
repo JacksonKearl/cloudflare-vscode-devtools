@@ -161,6 +161,10 @@ export const list = async (
 
     const data: ListResponseDatum[] = []
     for (const datum of Array.isArray(rawData) ? rawData : rawData.keys) {
+      if (!datum.name.startsWith(opts.prefix)) {
+        console.error("List error: invalid prefix matching", { opts, datum })
+        continue
+      }
       metadataCache.set(
         getCacheKey(opts.namespace, datum.name),
         JSON.stringify(datum.metadata),
