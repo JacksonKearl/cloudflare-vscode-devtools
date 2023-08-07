@@ -1,6 +1,8 @@
-# Cloudflare KV for VSCode (unofficial)
+# Cloudflare DevTools for VSCode (unofficial)
 
 Interface wth Cloudflare KV from within VS Code.
+
+Note: wrangler must be installed and logged into for this extension to work.
 
 ## Features
 
