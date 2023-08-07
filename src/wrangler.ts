@@ -1,7 +1,11 @@
 import * as vscode from "vscode"
 import { spawn } from "child_process"
 import { emptyUri } from "./uris"
-import { getQueryConfig } from "./configuration"
+import {
+  NamespaceConfig,
+  getQueriesConfig,
+  getWranglerPathConfig,
+} from "./configuration"
 
 export type RawListResponseDatum = {
   name: string
@@ -15,15 +19,72 @@ export type ListResponseDatum = {
   metadata?: any
 }
 
+const namespacesEqual = (a: NamespaceConfig, b: NamespaceConfig): boolean => {
+  if (a.id !== b.id) {
+    return false
+  }
+  if (a.binding !== b.binding) {
+    return false
+  }
+  if (a.local !== b.local) {
+    return false
+  }
+  if (a.preview !== b.preview) {
+    return false
+  }
+
+  return true
+}
+
+const getCacheKey = (namespace: NamespaceConfig, rest: string): string => {
+  if ("id" in namespace) {
+    return `${namespace.id}/${namespace.local ? "local" : "remote"}/${rest}`
+  } else {
+    return `${namespace.binding}/${namespace.local ? "local" : "remote"}/${
+      namespace.preview ? "preview" : "production"
+    }/${rest}`
+  }
+}
+
 const wranglerChannel = vscode.window.createOutputChannel("Cloudflare Wrangler")
-const wrangle = (namespaceID: string, args: string[]): Promise<Buffer> =>
+const wrangle = (namespace: NamespaceConfig, args: string[]): Promise<Buffer> =>
   new Promise((c, e) => {
+    const cmd = getWranglerPathConfig()
+    const bin = cmd.split(" ", 1)[0]
+    const rest = cmd.slice(bin.length + 1)
+
+    const namespaceArgs = []
+    if (namespace.binding) {
+      namespaceArgs.push("--binding", namespace.binding)
+    }
+    if (namespace.id) {
+      namespaceArgs.push("--namespace-id", namespace.id)
+    }
+    if (
+      namespace.preview ||
+      (namespace.local && namespace.preview === undefined)
+    ) {
+      namespaceArgs.push("--preview")
+    }
+    if (namespace.local) {
+      namespaceArgs.push("--local")
+    }
+
+    const cwd = vscode.workspace.workspaceFolders?.[0].uri.fsPath
+
     const task = [
-      "wrangler",
-      ["--namespace-id", namespaceID, "kv:key", ...args],
+      bin,
+      [
+        ...(rest ? [rest] : []),
+        ...(cmd === "npx" ? ["--yes"] : []),
+        "kv:key",
+        ...args,
+        ...namespaceArgs,
+      ],
     ] as const
+
     const taskLabel = JSON.stringify(task[0] + " " + task[1].join(" "))
-    const spawned = spawn(...task)
+    const spawned = spawn(...task, { cwd })
     wranglerChannel.appendLine(
       new Date().toLocaleString() + " " + "Spawn " + taskLabel,
     )
@@ -59,15 +120,15 @@ const listCache = new Map<
 
 export const list = async (
   opts: {
-    namespaceID: string
+    namespace: NamespaceConfig
     prefix: string
   },
   onListModified?: () => void,
 ): Promise<ListResponseDatum[]> => {
-  const listCacheKey = opts.namespaceID + "/" + opts.prefix
+  const listCacheKey = getCacheKey(opts.namespace, opts.prefix)
   if (listCache.has(listCacheKey)) {
     const list = listCache.get(listCacheKey)!.data.map((datum) => {
-      const datumCacheKey = opts.namespaceID + "/" + datum.key
+      const datumCacheKey = getCacheKey(opts.namespace, datum.key)
       const expiration = expirationCache.get(datumCacheKey)
       datum.expiration = expiration
       const metadata = metadataCache.get(datumCacheKey)
@@ -88,20 +149,26 @@ export const list = async (
     return list
   }
 
-  const buffer = await wrangle(opts.namespaceID, [
+  const buffer = await wrangle(opts.namespace, [
     "list",
     ...(opts.prefix ? ["--prefix", opts.prefix] : []),
   ])
   const list = buffer.toString()
   try {
-    const rawData = JSON.parse(list) as RawListResponseDatum[]
+    let rawData = JSON.parse(list) as
+      | RawListResponseDatum[]
+      | { keys: RawListResponseDatum[] }
+
     const data: ListResponseDatum[] = []
-    for (const datum of rawData) {
+    for (const datum of Array.isArray(rawData) ? rawData : rawData.keys) {
       metadataCache.set(
-        opts.namespaceID + "/" + datum.name,
+        getCacheKey(opts.namespace, datum.name),
         JSON.stringify(datum.metadata),
       )
-      expirationCache.set(opts.namespaceID + "/" + datum.name, datum.expiration)
+      expirationCache.set(
+        getCacheKey(opts.namespace, datum.name),
+        datum.expiration,
+      )
       data.push({
         key: datum.name,
         expiration: datum.expiration,
@@ -128,55 +195,56 @@ const cacheContents = (key: string, value: Promise<Uint8Array>) => {
 }
 
 export const get = async (opts: {
-  namespaceID: string
+  namespace: NamespaceConfig
   key: string
 }): Promise<Uint8Array> => {
-  const cacheKey = opts.namespaceID + "/" + opts.key
+  const cacheKey = getCacheKey(opts.namespace, opts.key)
+
   if (!contentsCache.has(cacheKey)) {
-    cacheContents(cacheKey, wrangle(opts.namespaceID, ["get", opts.key]))
+    cacheContents(cacheKey, wrangle(opts.namespace, ["get", opts.key]))
   }
   return contentsCache.get(cacheKey)!
 }
 
 export const setMetadata = async (opts: {
-  namespaceID: string
+  namespace: NamespaceConfig
   key: string
   meta: string
 }) => {
-  metadataCache.set(opts.namespaceID + "/" + opts.key, opts.meta)
+  metadataCache.set(getCacheKey(opts.namespace, opts.key), opts.meta)
   await put({
     key: opts.key,
-    namespaceID: opts.namespaceID,
+    namespace: opts.namespace,
     value: await get(opts),
   })
 }
 
 export const setExpiration = async (opts: {
-  namespaceID: string
+  namespace: NamespaceConfig
   key: string
   expiration?: number
 }) => {
-  expirationCache.set(opts.namespaceID + "/" + opts.key, opts.expiration)
+  expirationCache.set(getCacheKey(opts.namespace, opts.key), opts.expiration)
   await put({
     key: opts.key,
-    namespaceID: opts.namespaceID,
+    namespace: opts.namespace,
     value: await get(opts),
   })
 }
 
 export const put = async (opts: {
-  namespaceID: string
+  namespace: NamespaceConfig
   key: string
   value: Uint8Array
 }) => {
-  const cacheKey = opts.namespaceID + "/" + opts.key
+  const cacheKey = getCacheKey(opts.namespace, opts.key)
 
   if (!(metadataCache.has(cacheKey) && expirationCache.has(cacheKey))) {
     console.log(
       "metadata/expiry not in cache, fetching via a list operation",
       cacheKey,
     )
-    await list({ namespaceID: opts.namespaceID, prefix: opts.key })
+    await list({ namespace: opts.namespace, prefix: opts.key })
     if (!(metadataCache.has(cacheKey) && expirationCache.has(cacheKey))) {
       const whatToDo = await vscode.window.showErrorMessage(
         `Could not determine expiration or metadata for key ${opts.key}, has the entry been deleted?`,
@@ -202,13 +270,13 @@ export const put = async (opts: {
 }
 
 export const putFull = async (opts: {
-  namespaceID: string
+  namespace: NamespaceConfig
   key: string
   value: Uint8Array
   metadata?: string
   expiration?: number
 }) => {
-  await wrangle(opts.namespaceID, [
+  await wrangle(opts.namespace, [
     "put",
     opts.key,
     ...(opts.value.length
@@ -217,18 +285,19 @@ export const putFull = async (opts: {
     ...(opts.metadata ? ["--metadata", opts.metadata] : []),
     ...(opts.expiration ? ["--expiration", String(opts.expiration)] : []),
   ])
-  const cacheKey = opts.namespaceID + "/" + opts.key
+  const cacheKey = getCacheKey(opts.namespace, opts.key)
   cacheContents(cacheKey, Promise.resolve(opts.value))
   metadataCache.set(cacheKey, opts.metadata ?? "")
   expirationCache.set(cacheKey, opts.expiration)
 
-  const affectedQueries = getQueryConfig().filter(
-    ({ namespaceID, prefix }) =>
-      namespaceID === opts.namespaceID && opts.key.startsWith(prefix || ""),
+  const affectedQueries = getQueriesConfig().filter(
+    ({ namespace, prefix }) =>
+      namespacesEqual(namespace, opts.namespace) &&
+      opts.key.startsWith(prefix || ""),
   )
 
   affectedQueries.forEach((q) => {
-    const cacheKey = q.namespaceID + "/" + (q.prefix ?? "")
+    const cacheKey = getCacheKey(q.namespace, q.prefix ?? "")
     const cached = listCache.get(cacheKey)
     if (cached) {
       const insertIndex = cached.data.findIndex((v) => v.key >= opts.key)
@@ -252,11 +321,11 @@ export const putFull = async (opts: {
 }
 
 export const del = async (opts: {
-  namespaceID: string
+  namespace: NamespaceConfig
   key: string
   prefix: string
 }) => {
-  const cachedList = listCache.get(opts.namespaceID + "/" + opts.prefix)
+  const cachedList = listCache.get(getCacheKey(opts.namespace, opts.prefix))
   if (!cachedList) {
     throw Error(
       "Cannot find parent list for delete element: " + JSON.stringify(opts),
@@ -271,17 +340,18 @@ export const del = async (opts: {
   }
   cachedList.data.splice(index, 1)
   cachedList.onChange?.()
-  clearEntryCache({ namespaceID: opts.namespaceID, key: opts.key })
+  clearEntryCache({ namespace: opts.namespace, key: opts.key })
 
-  await wrangle(opts.namespaceID, ["delete", opts.key])
+  await wrangle(opts.namespace, ["delete", opts.key])
 
-  const affectedQueries = getQueryConfig().filter(
-    ({ namespaceID, prefix }) =>
-      namespaceID === opts.namespaceID && opts.key.startsWith(prefix || ""),
+  const affectedQueries = getQueriesConfig().filter(
+    ({ namespace, prefix }) =>
+      namespacesEqual(namespace, opts.namespace) &&
+      opts.key.startsWith(prefix || ""),
   )
 
   affectedQueries.forEach((q) => {
-    const cacheKey = q.namespaceID + "/" + (q.prefix ?? "")
+    const cacheKey = getCacheKey(q.namespace, q.prefix ?? "")
     const cached = listCache.get(cacheKey)
     if (cached) {
       const insertIndex = cached.data.findIndex((v) => v.key === opts.key)
@@ -294,7 +364,7 @@ export const del = async (opts: {
 }
 
 export const clearEntryCache = (opts?: {
-  namespaceID: string
+  namespace: NamespaceConfig
   key: string
 }) => {
   if (!opts) {
@@ -302,7 +372,7 @@ export const clearEntryCache = (opts?: {
     expirationCache.clear()
     contentsCache.clear()
   } else {
-    const cacheKey = opts.namespaceID + "/" + opts.key
+    const cacheKey = getCacheKey(opts.namespace, opts.key)
     metadataCache.delete(cacheKey)
     expirationCache.delete(cacheKey)
     contentsCache.delete(cacheKey)
@@ -310,12 +380,12 @@ export const clearEntryCache = (opts?: {
 }
 
 export const clearListCache = (opts?: {
-  namespaceID: string
+  namespace: NamespaceConfig
   prefix: string
 }) => {
   if (!opts) {
     listCache.clear()
   } else {
-    listCache.delete(opts.namespaceID + "/" + opts.prefix)
+    listCache.delete(getCacheKey(opts.namespace, opts.prefix))
   }
 }

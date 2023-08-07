@@ -37,7 +37,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((e) => {
-      if (e.affectsConfiguration("cloudflare-devtools.kv")) {
+      if (e.affectsConfiguration("cloudflare-devtools")) {
         treeChangeEmitter.fire()
       }
     }),
@@ -48,7 +48,7 @@ export function activate(context: vscode.ExtensionContext) {
       "cloudflare-devtools.refreshQuery",
       (query: KVQueryElement) => {
         clearEntryCache()
-        clearListCache({ namespaceID: query.namespaceID, prefix: query.prefix })
+        clearListCache(query)
         treeChangeEmitter.fire(query)
       },
     ),
@@ -71,7 +71,7 @@ export function activate(context: vscode.ExtensionContext) {
           { location: { viewId: "cloudflare-devtools.kv" } },
           async () => {
             const entry = {
-              namespaceID: query.namespaceID,
+              namespace: query.namespace,
               key,
               value: new Uint8Array(),
             }
@@ -100,7 +100,7 @@ export function activate(context: vscode.ExtensionContext) {
             const value = await get(entry)
 
             await putFull({
-              namespaceID: entry.namespaceID,
+              namespace: entry.namespace,
               key: newKey,
               value,
               expiration: entry.expiration,

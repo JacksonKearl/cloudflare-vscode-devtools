@@ -1,11 +1,11 @@
 import * as vscode from "vscode"
 import { ListResponseDatum, list } from "./wrangler"
 import { uriForKV } from "./uris"
-import { getQueryConfig } from "./configuration"
+import { NamespaceConfig, getQueriesConfig } from "./configuration"
 
 export type KVQueryElement = {
   type: "query"
-  namespaceID: string
+  namespace: NamespaceConfig
   prefix: string
   title: string
   parent: undefined
@@ -13,7 +13,7 @@ export type KVQueryElement = {
 
 export type KVEntryElement = {
   type: "entry"
-  namespaceID: string
+  namespace: NamespaceConfig
   parent: KVQueryElement
 } & ListResponseDatum
 
@@ -71,9 +71,9 @@ export const kvTreeDataProvider = (
     },
     async getChildren(element) {
       if (element === undefined) {
-        return getQueryConfig().map((s, i) => ({
+        return getQueriesConfig().map((s, i) => ({
           type: "query",
-          namespaceID: s.namespaceID,
+          namespace: s.namespace,
           prefix: s.prefix ?? "",
           title: s.title ?? s.prefix ?? `Query ${i + 1}`,
           parent: undefined,
@@ -87,11 +87,14 @@ export const kvTreeDataProvider = (
             return data.map((datum) => ({
               type: "entry",
               parent: element,
-              namespaceID: element.namespaceID,
+              namespace: element.namespace,
               ...datum,
             }))
           } catch (e) {
-            vscode.window.showErrorMessage(e as string)
+            console.error(e)
+            vscode.window.showErrorMessage(
+              typeof e === "string" ? e : (e as any).message,
+            )
             return []
           }
         }
@@ -137,7 +140,7 @@ export const kvTreeDataProvider = (
             command: "vscode.open",
             title: "Open",
             arguments: [
-              uriForKV({ key: element.key, namespaceID: element.namespaceID }),
+              uriForKV({ key: element.key, namespace: element.namespace }),
             ],
           }
           item.contextValue = "entry"

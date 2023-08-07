@@ -105,6 +105,11 @@
           "group": "inline"
         },
         {
+          "when": "viewItem == meta",
+          "command": "cloudflare-devtools.copyMetadata",
+          "group": "copy"
+        },
+        {
           "when": "viewItem == entry",
           "command": "cloudflare-devtools.copyKey",
           "group": "copy"
@@ -126,13 +131,28 @@
         },
         {
           "when": "viewItem == entry",
+          "command": "cloudflare-devtools.editMetadata",
+          "group": "edit@2"
+        },
+        {
+          "when": "viewItem == entry",
           "command": "cloudflare-devtools.editExpiration",
           "group": "inline@2"
         },
         {
           "when": "viewItem == entry",
+          "command": "cloudflare-devtools.editExpiration",
+          "group": "edit@3"
+        },
+        {
+          "when": "viewItem == entry",
           "command": "cloudflare-devtools.deleteEntry",
           "group": "inline@3"
+        },
+        {
+          "when": "viewItem == entry",
+          "command": "cloudflare-devtools.deleteEntry",
+          "group": "delete@1"
         }
       ]
     },
@@ -163,28 +183,68 @@
     },
     "configuration": {
       "properties": {
+        "cloudflare-devtools.wranglerPath": {
+          "scope": "machine",
+          "markdownDescription": "Command used to invoke wrangler. Configure this to run against a local or development version of the wrangler CLI. For example: `node /some/absolute/path/to/wangler-dist/cli.js` or `npx https://prerelease-registry.devprod.cloudflare.dev/workers-sdk/...`",
+          "default": "wrangler"
+        },
         "cloudflare-devtools.kv.queries": {
           "type": "array",
-          "markdownDescription": "List of KV queries to show in view. Each query consists of\n- `namespaceID` the ID of the KV namespace to search in. Might be in your wrangler.toml, but maybe not if you use the github integration (required) \n- `prefix` to query for (optional)\n- `title` to display (optional)",
+          "markdownDescription": "List of KV queries to show in the view.",
           "items": {
             "type": "object",
             "default": {
-              "namespaceID": "",
+              "namespace": {
+                "id": "",
+                "local": false
+              },
               "prefix": "",
-              "name": "My Query",
-              "autoExpandMetadata": "true"
+              "title": "My Query"
             },
-            "required": [
-              "namespaceID"
-            ],
+            "additionalProperties": false,
             "properties": {
-              "namespaceID": {
-                "type": "string"
+              "namespace": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "id": {
+                        "markdownDescription": "The KV Namespace ID to consult.\n\n***Note:*** depending on how you deploy, the value set in your `wrangler.toml` may not match the true value as configured in the Cloudflare Web UI, be sure to check the Web UI's ID if things are amiss.",
+                        "type": "string"
+                      },
+                      "local": {
+                        "markdownDescription": "When enabled, results will be fetched from the local KV database.",
+                        "type": "boolean"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "binding": {
+                        "markdownDescription": "The KV Binding to consult.\n\n***Note:*** depending on how you deploy, the value set in your `wrangler.toml` may not match the true value as configured in the Cloudflare Web UI, be sure to check the Web UI's ID if things are amiss.",
+                        "type": "string"
+                      },
+                      "local": {
+                        "markdownDescription": "When enabled, results will be fetched from the local KV database. This implies `preview: true`, though that can be explicitly set false if you know what you're doing.",
+                        "type": "boolean"
+                      },
+                      "preview": {
+                        "markdownDescription": "Whether to use the preview ID for this binding as configured in wrangler.toml. This is not needed when operating in local mode.\n\n***Note:*** this requires your wrangler.toml file to accurately match the bindings as configured in the Web UI, depending on how you deploy this will likely not be the case.",
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                ]
               },
               "prefix": {
+                "markdownDescription": "The prefix to query for. This prefix will be stripped from all keys when displayed in the UI.",
                 "type": "string"
               },
               "title": {
+                "markdownDescription": "The title for this query when displayed in the UI. Will fall back to the prefix if unset.",
                 "type": "string"
               }
             }

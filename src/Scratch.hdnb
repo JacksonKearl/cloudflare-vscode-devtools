@@ -40,7 +40,7 @@ ls.on("close", (code) => {
 const { spawn } = require("child_process")
 const { TextDecoder } = require("util")
 
-const ls = spawn("wrangler", [
+const ls = spawn("node ", [
   "kv:key",
   "get",
   "--namespace-id=" + "3b65edbf813c4bec80a9c0290367a33d",

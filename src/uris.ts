@@ -1,11 +1,12 @@
 import * as vscode from "vscode"
+import { NamespaceConfig } from "./configuration"
 
 export const kvScheme = "cloudflare-devtools-kv"
 
-export const uriForKV = (opts: { namespaceID: string; key: string }) =>
+export const uriForKV = (opts: { namespace: NamespaceConfig; key: string }) =>
   vscode.Uri.from({
     scheme: kvScheme,
-    authority: opts.namespaceID,
+    authority: encodeURIComponent(JSON.stringify(opts.namespace)),
     path: "/" + opts.key,
   })
 
@@ -13,7 +14,10 @@ export const kvForUri = (uri: vscode.Uri) => {
   if (uri.scheme !== kvScheme) {
     throw Error("Attempting to KV decode a non-KV URI: " + uri.toString())
   }
-  return { namespaceID: uri.authority, key: uri.path.slice(1) }
+  return {
+    namespace: JSON.parse(decodeURIComponent(uri.authority)) as NamespaceConfig,
+    key: uri.path.slice(1),
+  }
 }
 
 let resolveEmptyUri: (c: vscode.Uri) => void
