@@ -11,7 +11,7 @@ Features:
 ✔ Rename Entry @started(23-08-04 11:15) @done(23-08-04 11:45) @lasted(30m)
 ✔ Add Entry @started(23-08-04 14:06) @done(23-08-04 16:17) @lasted(2h11m25s)
 ✔ Read from wrangler.toml/json @started(23-08-08 12:49) @done(23-08-08 15:11) @lasted(2h22m48s) 
-☐ Auto-refersh local queries
+✘ Auto-refersh local queries @cancelled(23-08-08 15:22) # eh.
 
 Debt:
 ✔ "name" => "key" @started(23-08-04 11:55) @done(23-08-04 12:03) @lasted(8m17s)
