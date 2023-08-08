@@ -71,7 +71,7 @@ export const kvTreeDataProvider = (
     },
     async getChildren(element) {
       if (element === undefined) {
-        return getQueriesConfig().map((s, i) => ({
+        return (await getQueriesConfig()).map((s, i) => ({
           type: "query",
           namespace: s.namespace,
           prefix: s.prefix ?? "",
@@ -122,6 +122,14 @@ export const kvTreeDataProvider = (
             element.title,
             vscode.TreeItemCollapsibleState.Collapsed,
           )
+          if (
+            element.namespace.basePath &&
+            (vscode.workspace.workspaceFolders ?? []).length > 1
+          ) {
+            item.description = vscode.workspace.getWorkspaceFolder(
+              vscode.Uri.file(element.namespace.basePath),
+            )?.name
+          }
           item.contextValue = "query"
           return item
         }

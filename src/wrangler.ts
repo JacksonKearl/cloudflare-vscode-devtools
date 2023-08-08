@@ -38,11 +38,13 @@ const namespacesEqual = (a: NamespaceConfig, b: NamespaceConfig): boolean => {
 
 const getCacheKey = (namespace: NamespaceConfig, rest: string): string => {
   if ("id" in namespace) {
-    return `${namespace.id}/${namespace.local ? "local" : "remote"}/${rest}`
-  } else {
-    return `${namespace.binding}/${namespace.local ? "local" : "remote"}/${
-      namespace.preview ? "preview" : "production"
+    return `${namespace.basePath}/${namespace.id}/${
+      namespace.local ? "local" : "remote"
     }/${rest}`
+  } else {
+    return `${namespace.basePath}/${namespace.binding}/${
+      namespace.local ? "local" : "remote"
+    }/${namespace.preview ? "preview" : "production"}/${rest}`
   }
 }
 
@@ -70,7 +72,8 @@ const wrangle = (namespace: NamespaceConfig, args: string[]): Promise<Buffer> =>
       namespaceArgs.push("--local")
     }
 
-    const cwd = vscode.workspace.workspaceFolders?.[0].uri.fsPath
+    const cwd =
+      namespace.basePath || vscode.workspace.workspaceFolders?.[0].uri.fsPath
 
     const task = [
       bin,
@@ -83,7 +86,9 @@ const wrangle = (namespace: NamespaceConfig, args: string[]): Promise<Buffer> =>
       ],
     ] as const
 
-    const taskLabel = JSON.stringify(task[0] + " " + task[1].join(" "))
+    const taskLabel =
+      JSON.stringify(task[0] + " " + task[1].join(" ")) + " at " + cwd
+
     const spawned = spawn(...task, { cwd })
     wranglerChannel.appendLine(
       new Date().toLocaleString() + " " + "Spawn " + taskLabel,
@@ -294,7 +299,7 @@ export const putFull = async (opts: {
   metadataCache.set(cacheKey, opts.metadata ?? "")
   expirationCache.set(cacheKey, opts.expiration)
 
-  const affectedQueries = getQueriesConfig().filter(
+  const affectedQueries = (await getQueriesConfig()).filter(
     ({ namespace, prefix }) =>
       namespacesEqual(namespace, opts.namespace) &&
       opts.key.startsWith(prefix || ""),
@@ -348,7 +353,7 @@ export const del = async (opts: {
 
   await wrangle(opts.namespace, ["delete", opts.key])
 
-  const affectedQueries = getQueriesConfig().filter(
+  const affectedQueries = (await getQueriesConfig()).filter(
     ({ namespace, prefix }) =>
       namespacesEqual(namespace, opts.namespace) &&
       opts.key.startsWith(prefix || ""),

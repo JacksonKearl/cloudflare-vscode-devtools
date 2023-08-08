@@ -17,6 +17,7 @@ import {
   setExpiration,
   setMetadata,
 } from "./wrangler"
+import { refreshWranglerConfigFileCache } from "./configuration"
 
 export function activate(context: vscode.ExtensionContext) {
   makeEmptyFile(context.globalStorageUri)
@@ -41,6 +42,26 @@ export function activate(context: vscode.ExtensionContext) {
         treeChangeEmitter.fire()
       }
     }),
+  )
+
+  let handle: NodeJS.Timeout
+  const debouncedFire = () => {
+    clearTimeout(handle)
+    handle = setTimeout(async () => {
+      await refreshWranglerConfigFileCache()
+      return treeChangeEmitter.fire()
+    }, 1000)
+  }
+
+  const watcher = vscode.workspace.createFileSystemWatcher(
+    "**/wrangler.{json,toml}",
+  )
+
+  context.subscriptions.push(
+    watcher,
+    watcher.onDidChange(debouncedFire),
+    watcher.onDidCreate(debouncedFire),
+    watcher.onDidDelete(debouncedFire),
   )
 
   context.subscriptions.push(
