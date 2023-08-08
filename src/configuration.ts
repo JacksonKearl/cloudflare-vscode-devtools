@@ -74,14 +74,34 @@ export const getQueriesConfig = async () => {
   })
 
   queries.push(
-    ...(vscode.workspace.getConfiguration("cloudflare-devtools.kv").get<
+    ...(vscode.workspace.getConfiguration("cloudflare-devtools.kv").inspect<
       {
         namespace: NamespaceConfig
         prefix?: string
         title?: string
       }[]
-    >("queries") ?? []),
+    >("queries")?.globalValue ?? []),
   )
+
+  for (const folder of vscode.workspace.workspaceFolders ?? []) {
+    const workspaceConfig =
+      vscode.workspace
+        .getConfiguration("cloudflare-devtools.kv", folder)
+        .inspect<
+          {
+            namespace: NamespaceConfig
+            prefix?: string
+            title?: string
+          }[]
+        >("queries")?.workspaceFolderValue ?? []
+
+    queries.push(
+      ...workspaceConfig.map((c) => {
+        c.namespace.basePath ??= folder.uri.fsPath
+        return c
+      }),
+    )
+  }
 
   return queries
 }

@@ -196,6 +196,7 @@
         },
         "cloudflare-devtools.kv.queries": {
           "type": "array",
+          "scope": "resource", 
           "markdownDescription": "List of KV queries to show in the view.",
           "items": {
             "type": "object",
