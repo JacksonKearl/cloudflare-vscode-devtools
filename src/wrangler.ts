@@ -67,6 +67,9 @@ const wrangle = (namespace: NamespaceConfig, args: string[]): Promise<Buffer> =>
       (namespace.local && namespace.preview === undefined)
     ) {
       namespaceArgs.push("--preview")
+    } else {
+      namespaceArgs.push("--preview")
+      namespaceArgs.push("false")
     }
     if (namespace.local) {
       namespaceArgs.push("--local")

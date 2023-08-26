@@ -4,10 +4,10 @@
   "repository": {
     "url": "https://github.com/JacksonKearl/cloudflare-vscode-devtools/"
   },
-  "icon": "icon.jpeg",
+  "icon": "icon.png",
   "publisher": "jaaxxx",
   "description": "Interface with Cloudflare products (for now just KV, more to come?)",
-  "version": "0.0.3",
+  "version": "0.0.5",
   "engines": {
     "vscode": "^1.80.0"
   },
@@ -196,7 +196,7 @@
         },
         "cloudflare-devtools.kv.queries": {
           "type": "array",
-          "scope": "resource", 
+          "scope": "resource",
           "markdownDescription": "List of KV queries to show in the view.",
           "items": {
             "type": "object",
