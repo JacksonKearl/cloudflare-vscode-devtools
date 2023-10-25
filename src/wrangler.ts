@@ -38,13 +38,11 @@ const namespacesEqual = (a: NamespaceConfig, b: NamespaceConfig): boolean => {
 
 const getCacheKey = (namespace: NamespaceConfig, rest: string): string => {
   if ("id" in namespace) {
-    return `${namespace.basePath}/${namespace.id}/${
-      namespace.local ? "local" : "remote"
-    }/${rest}`
+    return `${namespace.basePath}/${namespace.id}/${namespace.local ? "local" : "remote"
+      }/${rest}`
   } else {
-    return `${namespace.basePath}/${namespace.binding}/${
-      namespace.local ? "local" : "remote"
-    }/${namespace.preview ? "preview" : "production"}/${rest}`
+    return `${namespace.basePath}/${namespace.binding}/${namespace.local ? "local" : "remote"
+      }/${namespace.preview ? "preview" : "production"}/${rest}`
   }
 }
 
@@ -111,11 +109,11 @@ const wrangle = (namespace: NamespaceConfig, args: string[]): Promise<Buffer> =>
       const allStderrStr = JSON.stringify(allStderr.toString())
       wranglerChannel.append(
         new Date().toLocaleString() +
-          " " +
-          `Ended ${taskLabel}\nstdout: ${allStdoutStr}\nstderr: ${allStderrStr}\n`,
+        " " +
+        `Ended ${taskLabel}\nstdout: ${allStdoutStr}\nstderr: ${allStderrStr}\n`,
       )
 
-      return stderr.length ? e(allStderr.toString()) : c(allStdout)
+      return c(allStdout)
     })
   })
 
@@ -347,7 +345,7 @@ export const del = async (opts: {
   if (index === -1) {
     throw Error(
       "Cannot find delete element in parent list: " +
-        JSON.stringify({ deleteElement: opts, parentList: cachedList }),
+      JSON.stringify({ deleteElement: opts, parentList: cachedList }),
     )
   }
   cachedList.data.splice(index, 1)
